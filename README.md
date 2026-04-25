@@ -21,7 +21,7 @@
 ### Установка
 ```bash
 # 1. Клонируйте репозиторий
-git clone <ВАШ_URL_РЕПОЗИТОРИЯ>
+git clone https://github.com/wetywrger/portal.git
 cd corporate-portal
 
 # 2. Соберите и запустите контейнеры
