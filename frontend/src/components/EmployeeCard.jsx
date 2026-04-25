@@ -38,7 +38,6 @@ export default function EmployeeCard({ employee, onClose }) {
             <InfoBlock label="Эл. почта" value={employee.email} />
             <InfoBlock label="Рабочий телефон" value={employee.phone_work} />
             <InfoBlock label="Личный телефон" value={employee.phone_personal} />
-            <InfoBlock label="Часовой пояс" value={employee.timezone} />
             <InfoBlock label="Дата рождения" value={employee.birth_date} />
             {employee.deputy_id && <InfoBlock label="Заместитель" value={employee.deputy_name || `ID: ${employee.deputy_id}`} />}
           </div>
