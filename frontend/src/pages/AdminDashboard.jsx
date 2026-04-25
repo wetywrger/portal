@@ -1,0 +1,230 @@
+import { useState, useEffect } from 'react';
+
+const INITIAL_EMP = { 
+  full_name: '', position: '', department: '', email: '', phone_personal: '', 
+  phone_work: '', timezone: 'Europe/Moscow', birth_date: '', 
+  location: '', is_on_vacation: false, deputy_id: null, photo_url: '' 
+};
+
+export default function AdminDashboard({ token, onLogout }) {
+  const [employees, setEmployees] = useState([]);
+  const [filteredEmployees, setFilteredEmployees] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [editEmp, setEditEmp] = useState(null);
+  const [form, setForm] = useState(INITIAL_EMP);
+  const [uploading, setUploading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+
+  const fetchData = async () => {
+    if (!token) return;
+    setLoading(true);
+    try {
+      const empRes = await fetch('/api/admin/employees', { headers: { 'Authorization': `Bearer ${token}` } });
+      if (!empRes.ok) { alert('Ошибка загрузки сотрудников'); setEmployees([]); setFilteredEmployees([]); return; }
+      const data = await empRes.json();
+      setEmployees(data);
+      setFilteredEmployees(data);
+
+      const deptRes = await fetch('/api/departments');
+      if (deptRes.ok) setDepartments(await deptRes.json());
+    } catch (e) { console.error(e); alert('Ошибка сети'); }
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => { fetchData(); }, [token]);
+
+  useEffect(() => {
+    if (!search.trim()) {
+      setFilteredEmployees(employees);
+    } else {
+      const s = search.toLowerCase();
+      const filtered = employees.filter(emp => 
+        emp.full_name.toLowerCase().includes(s) ||
+        emp.position.toLowerCase().includes(s) ||
+        emp.department.toLowerCase().includes(s) ||
+        emp.email.toLowerCase().includes(s)
+      );
+      setFilteredEmployees(filtered);
+    }
+  }, [search, employees]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const method = editEmp ? 'PUT' : 'POST';
+    const url = editEmp ? `/api/admin/employees/${editEmp.id}` : '/api/admin/employees';
+    try {
+      const res = await fetch(url, { method, headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
+      if (!res.ok) throw new Error('Ошибка сохранения');
+      setEditEmp(null); setForm(INITIAL_EMP); setUploading(false);
+      setSearch('');
+      fetchData();
+    } catch (e) { alert('Не удалось сохранить сотрудника'); }
+  };
+
+  const handleDelete = async (id) => { 
+    if(!confirm('Удалить сотрудника?')) return;
+    try { await fetch(`/api/admin/employees/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } }); fetchData(); }
+    catch (e) { alert('Ошибка удаления'); }
+  };
+
+  const handleDeleteDept = async (name) => { 
+    if(!confirm(`Удалить отдел "${name}"?`)) return;
+    try { await fetch(`/api/admin/departments/${encodeURIComponent(name)}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } }); fetchData(); }
+    catch (e) { alert(e.message || 'Ошибка'); }
+  };
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/admin/upload-photo', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData });
+      if (!res.ok) throw new Error('Ошибка загрузки');
+      const data = await res.json();
+      setForm(prev => ({ ...prev, photo_url: data.url }));
+    } catch (err) { alert('Не удалось загрузить фото'); }
+    finally { setUploading(false); }
+  };
+
+  if (loading) return <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-500">Загрузка данных...</div>;
+
+  return (
+    <div className="min-h-screen bg-slate-50 p-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
+          <h1 className="text-2xl font-bold text-brand-700">⚙️ Административная панель</h1>
+          <div className="flex items-center gap-3">
+            <div className="relative w-full md:w-80">
+              <input
+                type="text"
+                placeholder="Поиск сотрудника..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full px-4 py-2 pl-10 rounded-lg border border-brand-200 bg-brand-50 focus:outline-none focus:ring-2 focus:ring-brand-400 transition-all"
+              />
+              <svg className="absolute left-3 top-2.5 w-5 h-5 text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            <button onClick={onLogout} className="text-sm text-slate-500 hover:text-red-500 font-medium whitespace-nowrap">Выйти</button>
+          </div>
+        </div>
+
+        <div className="grid lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 bg-white p-5 rounded-xl shadow-sm border border-slate-100">
+            <h2 className="text-lg font-semibold mb-4 text-brand-600">
+              Сотрудники {search && <span className="text-slate-400 font-normal text-base">(найдено: {filteredEmployees.length})</span>}
+            </h2>
+            <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
+              {filteredEmployees.map(e => (
+                <div key={e.id} className="flex justify-between items-center p-3 bg-slate-50 rounded-lg border border-slate-100 hover:border-brand-200 transition">
+                  <div className="flex items-center gap-3">
+                    <img src={e.photo_url || '/placeholder.jpg'} className="w-10 h-10 rounded-full object-cover bg-slate-200" alt="" />
+                    <div>
+                      <span className="font-medium text-slate-800">{e.full_name}</span>
+                      <span className="text-slate-400 text-sm ml-2">| {e.department}</span>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => { setEditEmp(e); setForm({...INITIAL_EMP, ...e}); }} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200 transition">Изм.</button>
+                    <button onClick={() => handleDelete(e.id)} className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded hover:bg-red-200 transition">Удал.</button>
+                  </div>
+                </div>
+              ))}
+              {filteredEmployees.length === 0 && (
+                <p className="text-slate-400 text-sm text-center py-4">
+                  {search ? 'Сотрудники не найдены по вашему запросу' : 'Сотрудники не найдены'}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-100">
+            <h2 className="text-lg font-semibold mb-4 text-warm-600">{editEmp ? 'Редактирование' : 'Добавить сотрудника'}</h2>
+            <form onSubmit={handleSubmit} className="space-y-4 text-sm">
+              <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                <label className="block font-medium text-slate-700 mb-2">Фотография</label>
+                <div className="flex items-center gap-3">
+                  {form.photo_url ? (
+                    <>
+                      <img src={form.photo_url} alt="Preview" className="w-16 h-16 rounded-lg object-cover border border-slate-200 bg-white" />
+                      <button type="button" onClick={() => setForm(prev => ({ ...prev, photo_url: '' }))} className="text-xs text-red-500 hover:underline whitespace-nowrap">Удалить фото</button>
+                    </>
+                  ) : (
+                    <div className="w-16 h-16 rounded-lg border-2 border-dashed border-slate-300 bg-slate-100 flex items-center justify-center flex-shrink-0">
+                      <svg className="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFileUpload} className="block w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-xs file:bg-brand-100 file:text-brand-700 hover:file:bg-brand-200 cursor-pointer" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block font-medium text-slate-600">ФИО</label>
+                <input className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-400 outline-none" placeholder="Фамилия Имя Отчество" value={form.full_name} onChange={e => setForm({...form, full_name: e.target.value})} />
+              </div>
+              <div className="space-y-2">
+                <label className="block font-medium text-slate-600">Должность</label>
+                <input className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-400 outline-none" placeholder="Например: Менеджер" value={form.position} onChange={e => setForm({...form, position: e.target.value})} />
+              </div>
+              <div className="space-y-2">
+                <label className="block font-medium text-slate-600">Отдел</label>
+                <input className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-400 outline-none" placeholder="Например: Продажи" value={form.department} onChange={e => setForm({...form, department: e.target.value})} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <label className="block font-medium text-slate-600">Эл. почта</label>
+                  <input className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-400 outline-none" placeholder="email@corp.ru" value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
+                </div>
+                <div className="space-y-2">
+                  <label className="block font-medium text-slate-600">Место работы</label>
+                  <input className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-400 outline-none" placeholder="Город / Офис" value={form.location} onChange={e => setForm({...form, location: e.target.value})} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <label className="block font-medium text-slate-600">Личный телефон</label>
+                  <input className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-400 outline-none" placeholder="+7..." value={form.phone_personal} onChange={e => setForm({...form, phone_personal: e.target.value})} />
+                </div>
+                <div className="space-y-2">
+                  <label className="block font-medium text-slate-600">Рабочий телефон</label>
+                  <input className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-400 outline-none" placeholder="+7..." value={form.phone_work} onChange={e => setForm({...form, phone_work: e.target.value})} />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="block font-medium text-slate-600">Дата рождения</label>
+                <input className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-400 outline-none" type="date" value={form.birth_date} onChange={e => setForm({...form, birth_date: e.target.value})} />
+              </div>
+              
+              <button disabled={uploading} className="w-full bg-brand-600 hover:bg-brand-700 disabled:bg-slate-400 text-white py-2 rounded-lg font-medium mt-2 transition" type="submit">
+                {uploading ? 'Загрузка...' : (editEmp ? 'Сохранить изменения' : 'Добавить сотрудника')}
+              </button>
+              {editEmp && <button type="button" onClick={() => { setEditEmp(null); setForm(INITIAL_EMP); setUploading(false); }} className="w-full mt-2 text-slate-500 text-sm hover:underline py-1">Отмена</button>}
+            </form>
+          </div>
+        </div>
+
+        <div className="mt-6 bg-white p-5 rounded-xl shadow-sm border border-slate-100">
+          <h2 className="text-lg font-semibold mb-4 text-brand-600">Управление отделами</h2>
+          <div className="flex flex-wrap gap-2">
+            {departments.map(d => (
+              <div key={d} className="flex items-center bg-warm-50 border border-warm-100 rounded-lg px-3 py-1.5">
+                <span className="text-sm font-medium text-warm-800 mr-2">{d}</span>
+                <button onClick={() => handleDeleteDept(d)} className="text-red-500 hover:text-red-700 text-xs font-bold px-1 rounded hover:bg-red-50">✕</button>
+              </div>
+            ))}
+            {departments.length === 0 && <span className="text-slate-400 text-sm">Отделы формируются автоматически при добавлении сотрудников</span>}
+          </div>
+          <p className="text-xs text-slate-400 mt-3">💡 Отделы создаются автоматически. Удалить можно только пустые отделы.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
