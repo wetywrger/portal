@@ -46,7 +46,7 @@ function PublicPortal() {
       </header>
       <main className="max-w-7xl mx-auto p-6 grid md:grid-cols-4 gap-6">
         <aside className="md:col-span-1 bg-white rounded-xl shadow-sm p-4 h-fit border border-warm-100">
-          <h2 className="text-lg font-semibold mb-3 text-warm-600">🏢 Отделы</h2>
+          <h2 className="text-lg font-semibold mb-3 text-warm-600">🏢 Подразделения</h2>
           <DepartmentList departments={departments} selected={selectedDept} onSelect={(d) => setSelectedDept(d === selectedDept ? null : d)} />
         </aside>
         <section className="md:col-span-3">

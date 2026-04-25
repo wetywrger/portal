@@ -83,7 +83,7 @@ export default function AdminDashboard({ token, onLogout }) {
   };
 
   const handleDeleteDept = async (name) => { 
-    if(!confirm(`Удалить отдел "${name}"?`)) return;
+    if(!confirm(`Удалить подразделение "${name}"?`)) return;
     try { 
       const res = await fetch(`/api/admin/departments/${encodeURIComponent(name)}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
       if (!res.ok) {
@@ -194,7 +194,7 @@ export default function AdminDashboard({ token, onLogout }) {
                 <input className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-400 outline-none" placeholder="Например: Менеджер" value={form.position} onChange={e => setForm({...form, position: e.target.value})} />
               </div>
               <div className="space-y-2">
-                <label className="block font-medium text-slate-600">Отдел</label>
+                <label className="block font-medium text-slate-600">Подразделение</label>
                 <input className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-400 outline-none" placeholder="Например: Продажи" value={form.department} onChange={e => setForm({...form, department: e.target.value})} />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -231,7 +231,7 @@ export default function AdminDashboard({ token, onLogout }) {
         </div>
 
         <div className="mt-6 bg-white p-5 rounded-xl shadow-sm border border-slate-100">
-          <h2 className="text-lg font-semibold mb-4 text-brand-600">Управление отделами</h2>
+          <h2 className="text-lg font-semibold mb-4 text-brand-600">Управление подразделениями</h2>
           <div className="flex flex-wrap gap-2">
             {departments.map(d => (
               <div key={d} className="flex items-center bg-warm-50 border border-warm-100 rounded-lg px-3 py-1.5">
@@ -239,9 +239,9 @@ export default function AdminDashboard({ token, onLogout }) {
                 <button onClick={() => handleDeleteDept(d)} className="text-red-500 hover:text-red-700 text-xs font-bold px-1 rounded hover:bg-red-50">✕</button>
               </div>
             ))}
-            {departments.length === 0 && <span className="text-slate-400 text-sm">Отделы формируются автоматически при добавлении сотрудников</span>}
+            {departments.length === 0 && <span className="text-slate-400 text-sm">Подразделения формируются автоматически при добавлении сотрудников</span>}
           </div>
-          <p className="text-xs text-slate-400 mt-3">💡 Отделы создаются автоматически. Удалить можно только пустые отделы.</p>
+          <p className="text-xs text-slate-400 mt-3">💡 Подразделения создаются автоматически. Удалить можно только пустые подразделения.</p>
         </div>
       </div>
     </div>

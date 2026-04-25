@@ -8,7 +8,7 @@ export default function EmployeeList({ employees, loading, onSelect }) {
       <div className="hidden md:grid grid-cols-10 gap-4 px-6 py-3 bg-brand-50/50 border-b border-brand-100 text-xs font-semibold text-slate-500 uppercase tracking-wide">
         <div className="col-span-5">Сотрудник</div>
         <div className="col-span-3">Должность</div>
-        <div className="col-span-2">Отдел</div>
+        <div className="col-span-2">Подразделение</div>
       </div>
 
       {/* Список строк */}

@@ -8,7 +8,7 @@ export default function DepartmentList({ departments, selected, onSelect }) {
           onClick={() => onSelect(null)}
           className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${!selected ? 'bg-brand-100 text-brand-800 font-medium' : 'hover:bg-brand-50 text-slate-600'}`}
         >
-          Все отделы
+          Все подразделения
         </button>
       </li>
       {departments.map(dept => (
