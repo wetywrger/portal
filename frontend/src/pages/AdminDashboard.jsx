@@ -55,23 +55,42 @@ export default function AdminDashboard({ token, onLogout }) {
     const url = editEmp ? `/api/admin/employees/${editEmp.id}` : '/api/admin/employees';
     try {
       const res = await fetch(url, { method, headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
-      if (!res.ok) throw new Error('Ошибка сохранения');
+      if (!res.ok) {
+        let errMsg = `Ошибка HTTP ${res.status}`;
+        // Читаем поток ОДИН раз как текст, затем пытаемся распарсить JSON
+        const rawText = await res.text();
+        try {
+          const errData = JSON.parse(rawText);
+          errMsg = errData.detail?.[0]?.msg || errData.detail || errMsg;
+        } catch {
+          errMsg = rawText.slice(0, 150) || errMsg;
+        }
+        throw new Error(errMsg);
+      }
       setEditEmp(null); setForm(INITIAL_EMP); setUploading(false);
       setSearch('');
       fetchData();
-    } catch (e) { alert('Не удалось сохранить сотрудника'); }
+    } catch (e) { alert(`Не удалось сохранить: ${e.message}`); }
   };
 
   const handleDelete = async (id) => { 
     if(!confirm('Удалить сотрудника?')) return;
-    try { await fetch(`/api/admin/employees/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } }); fetchData(); }
-    catch (e) { alert('Ошибка удаления'); }
+    try { 
+      const res = await fetch(`/api/admin/employees/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+      if (!res.ok) throw new Error('Ошибка удаления');
+      fetchData(); 
+    } catch (e) { alert(e.message); }
   };
 
   const handleDeleteDept = async (name) => { 
     if(!confirm(`Удалить отдел "${name}"?`)) return;
-    try { await fetch(`/api/admin/departments/${encodeURIComponent(name)}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } }); fetchData(); }
-    catch (e) { alert(e.message || 'Ошибка'); }
+    try { 
+      const res = await fetch(`/api/admin/departments/${encodeURIComponent(name)}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+      if (!res.ok) {
+        const txt = await res.text();
+        alert(txt || 'Ошибка');
+      } else { fetchData(); }
+    } catch (e) { alert(e.message || 'Ошибка сети'); }
   };
 
   const handleFileUpload = async (e) => {

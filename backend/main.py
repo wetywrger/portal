@@ -236,18 +236,22 @@ def admin_get_employees(db: Session = Depends(get_db), _: AdminDB = Depends(get_
 
 @app.post("/api/admin/employees", status_code=201)
 def admin_create_employee(data: EmployeeCreate, db: Session = Depends(get_db), _: AdminDB = Depends(get_current_admin)):
-    new = EmployeeDB(**data.model_dump())
+    emp_data = data.model_dump()
+    emp_data.pop("hire_date", None)  # гарантируем отсутствие удалённого поля
+    new = EmployeeDB(**emp_data)
     db.add(new)
     db.commit()
     db.refresh(new)
     return {"id": new.id}
 
 @app.put("/api/admin/employees/{emp_id}")
-def admin_update_employee(emp_id: int,  EmployeeUpdate, db: Session = Depends(get_db), _: AdminDB = Depends(get_current_admin)):
+def admin_update_employee(emp_id: int, data: EmployeeUpdate, db: Session = Depends(get_db), _: AdminDB = Depends(get_current_admin)):
     emp = db.query(EmployeeDB).filter(EmployeeDB.id == emp_id).first()
     if not emp:
         raise HTTPException(404, "Не найден")
-    for k, v in data.model_dump(exclude_unset=True).items():
+    update_data = data.model_dump(exclude_unset=True)
+    update_data.pop("hire_date", None)
+    for k, v in update_data.items():
         setattr(emp, k, v)
     db.commit()
     db.refresh(emp)
