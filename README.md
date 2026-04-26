@@ -30,7 +30,7 @@
 ```bash
 # 1. Клонируйте репозиторий
 git clone https://github.com/wetywrger/portal.git
-cd corporate-portal
+cd portal
 
 # 2. Соберите и запустите контейнеры
 docker compose up -d --build
