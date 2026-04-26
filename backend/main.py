@@ -151,11 +151,11 @@ def get_db():
 
 @app.on_event("startup")
 def seed_data():
-    print("🌱 Проверка и инициализация БД...")
+    print("🌱 Инициализация БД...")
     db = SessionLocal()
     try:
         admin_user = os.getenv("ADMIN_USERNAME", "admin")
-        admin_pass = os.getenv("ADMIN_PASSWORD", "admin123")
+        admin_pass = os.getenv("ADMIN_PASSWORD", "Gfhjkm2026%")
 
         if not db.query(AdminDB).first():
             db.add(AdminDB(username=admin_user, hashed_password=get_password_hash(admin_pass)))
@@ -164,24 +164,7 @@ def seed_data():
         else:
             print("ℹ️ Администратор уже существует в БД.")
 
-        if not db.query(EmployeeDB).first():
-            db.add_all([
-                EmployeeDB(full_name="Иванов Иван Иванович", position="Руководитель IT-отдела",
-                    department="Разработка", email="ivanov@corp.ru", phone_personal="+79990001122",
-                    phone_work="+74951234500", timezone="Europe/Moscow", birth_date="1988-04-12",
-                    location="Москва", is_on_vacation=False, photo_url="https://i.pravatar.cc/150?img=11"),
-                EmployeeDB(full_name="Петрова Анна Сергеевна", position="Senior Developer",
-                    department="Разработка", email="petrova@corp.ru", phone_personal="+79990003344",
-                    phone_work="+74951234501", timezone="Europe/Moscow", birth_date="1995-08-22",
-                    location="Москва", is_on_vacation=True, photo_url="https://i.pravatar.cc/150?img=5", deputy_id=1),
-                EmployeeDB(full_name="Сидоров Дмитрий Олегович", position="Маркетолог",
-                    department="Маркетинг", email="sidorov@corp.ru", phone_personal="+79990005566",
-                    phone_work="+74951234510", timezone="Europe/Moscow", birth_date="1990-12-03",
-                    location="Санкт-Петербург", is_on_vacation=False, photo_url="https://i.pravatar.cc/150?img=33")
-            ])
-            db.commit()
-            print("👥 Тестовые сотрудники добавлены.")
-        print("🚀 Бэкенд успешно запущен.")
+        print("🚀 Бэкенд успешно запущен. База готова к заполнению.")
     finally:
         db.close()
 
