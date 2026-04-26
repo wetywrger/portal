@@ -11,9 +11,13 @@
 
 ## 😎 Внешний вид интерфейса
 ### Главная страница
+<img width="1882" height="677" alt="1" src="https://github.com/user-attachments/assets/94a341e5-17fe-4df2-a9e7-389561d5bc8d" />
 
 ### Карточка сотрудника
+<img width="965" height="702" alt="3" src="https://github.com/user-attachments/assets/f033d208-9edb-4657-ae6f-d331307eb299" />
+
 ### Административная панель
+<img width="1495" height="939" alt="2" src="https://github.com/user-attachments/assets/1cfe1f5a-8f3a-400b-b81a-f41c7e75ebfe" />
 
 ## 🚀 Быстрый старт
 
