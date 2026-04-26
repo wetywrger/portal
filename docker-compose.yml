@@ -10,7 +10,7 @@ services:
       - db_data:/app/data
     environment:
       - ADMIN_USERNAME=admin
-      - ADMIN_PASSWORD=admin123
+      - ADMIN_PASSWORD=Gfhjkm2026%
       - ADMIN_SECRET_KEY=your-very-secure-secret-key-2024
       - PYTHONUNBUFFERED=1
     networks:
@@ -20,7 +20,7 @@ services:
     build: ./frontend
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "777:80"
     volumes:
       - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:

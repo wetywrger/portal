@@ -36,7 +36,7 @@ function PublicPortal() {
     <div className="min-h-screen bg-brand-50 text-slate-800">
       <header className="bg-white shadow-sm border-b border-brand-100 px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <img src="/logo.png" alt="Логотип" className="w-40 h-10 object-contain" />
+          <img src="/logo.png" alt="Логотип" className="w-40 h-8 object-contain" />
           <h1 className="text-2xl font-bold text-brand-700">Корпоративный справочник</h1>
         </div>
         <div className="flex gap-3">
