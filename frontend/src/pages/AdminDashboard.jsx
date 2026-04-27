@@ -15,6 +15,7 @@ export default function AdminDashboard({ token, onLogout }) {
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [importStatus, setImportStatus] = useState(null);
 
   const fetchData = async () => {
     if (!token) return;
@@ -57,7 +58,6 @@ export default function AdminDashboard({ token, onLogout }) {
       const res = await fetch(url, { method, headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
       if (!res.ok) {
         let errMsg = `Ошибка HTTP ${res.status}`;
-        // Читаем поток ОДИН раз как текст, затем пытаемся распарсить JSON
         const rawText = await res.text();
         try {
           const errData = JSON.parse(rawText);
@@ -108,6 +108,46 @@ export default function AdminDashboard({ token, onLogout }) {
     finally { setUploading(false); }
   };
 
+  const handleImport = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    if (!file.name.endsWith('.xlsx')) {
+      alert('Пожалуйста, выберите файл формата .xlsx');
+      e.target.value = ''; // Сброс input
+      return;
+    }
+
+    setImportStatus('Загрузка и обработка...');
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await fetch('/api/admin/import-employees', { 
+        method: 'POST', 
+        headers: { Authorization: `Bearer ${token}` }, 
+        body: formData 
+      });
+      
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(errText || `Ошибка HTTP ${res.status}`);
+      }
+      
+      const result = await res.json();
+      let msg = `Готово! Создано: ${result.created}, Обновлено: ${result.updated}.`;
+      if (result.errors.length > 0) {
+        msg += `\nОшибок: ${result.errors.length}. См. консоль.`;
+        console.warn('Ошибки импорта:', result.errors);
+      }
+      setImportStatus(msg);
+      fetchData(); 
+    } catch (err) {
+      setImportStatus('Ошибка импорта');
+      alert(`Не удалось загрузить файл:\n${err.message}`);
+    }
+  };
+
   if (loading) return <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-500">Загрузка данных...</div>;
 
   return (
@@ -129,6 +169,22 @@ export default function AdminDashboard({ token, onLogout }) {
               </svg>
             </div>
             <button onClick={onLogout} className="text-sm text-slate-500 hover:text-red-500 font-medium whitespace-nowrap">Выйти</button>
+          </div>
+        </div>
+
+        {/* Блок импорта */}
+        <div className="mb-6 bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div>
+            <h3 className="font-semibold text-slate-700">Импорт сотрудников из Excel</h3>
+            <p className="text-xs text-slate-500 mt-1">Файл .xlsx. Данные с 3-й строки. Заголовки во 2-й.</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <label className="cursor-pointer bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+              Выбрать файл
+              <input type="file" accept=".xlsx" onChange={handleImport} className="hidden" />
+            </label>
+            {importStatus && <span className={`text-sm ${importStatus.includes('Ошибка') ? 'text-red-500' : 'text-green-600'}`}>{importStatus}</span>}
           </div>
         </div>
 

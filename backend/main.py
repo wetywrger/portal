@@ -12,6 +12,8 @@ from jose import JWTError, jwt
 from sqlalchemy import create_engine, Column, Integer, String, Boolean
 from sqlalchemy.orm import sessionmaker, declarative_base, Session
 from pydantic import BaseModel
+import openpyxl
+from io import BytesIO
 
 # --- Config ---
 SECRET_KEY = os.getenv("ADMIN_SECRET_KEY", "dev-secret-key-change-in-prod")
@@ -155,7 +157,7 @@ def seed_data():
     db = SessionLocal()
     try:
         admin_user = os.getenv("ADMIN_USERNAME", "admin")
-        admin_pass = os.getenv("ADMIN_PASSWORD", "Gfhjkm2026%")
+        admin_pass = os.getenv("ADMIN_PASSWORD", "admin123")
 
         if not db.query(AdminDB).first():
             db.add(AdminDB(username=admin_user, hashed_password=get_password_hash(admin_pass)))
@@ -220,7 +222,7 @@ def admin_get_employees(db: Session = Depends(get_db), _: AdminDB = Depends(get_
 @app.post("/api/admin/employees", status_code=201)
 def admin_create_employee(data: EmployeeCreate, db: Session = Depends(get_db), _: AdminDB = Depends(get_current_admin)):
     emp_data = data.model_dump()
-    emp_data.pop("hire_date", None)  # гарантируем отсутствие удалённого поля
+    emp_data.pop("hire_date", None)
     new = EmployeeDB(**emp_data)
     db.add(new)
     db.commit()
@@ -270,4 +272,106 @@ async def upload_photo(file: UploadFile = File(...), _: AdminDB = Depends(get_cu
         f.write(content)
     return {"url": f"/uploads/{filename}"}
 
+# --- Import Employees Endpoint ---
+@app.post("/api/admin/import-employees")
+async def import_employees(file: UploadFile = File(...), _: AdminDB = Depends(get_current_admin)):
+    if not file.filename.endswith('.xlsx'):
+        raise HTTPException(400, "Разрешены только файлы .xlsx (Excel 2007+)")
+    
+    try:
+        contents = await file.read()
+        wb = openpyxl.load_workbook(BytesIO(contents))
+        ws = wb.active
+        
+        # Пропускаем первые 2 строки (заголовки начинаются со 2-й, данные с 3-й)
+        rows = list(ws.iter_rows(min_row=3, values_only=True))
+        
+        created = 0
+        updated = 0
+        errors = []
+        
+        db = SessionLocal()
+        try:
+            for row_idx, row in enumerate(rows, start=3):
+                # Пропуск полностью пустых строк
+                if not any(row): 
+                    continue
+                
+                try:
+                    # Безопасное получение значений (защита от None)
+                    full_name = str(row[0]).strip() if row[0] else ""
+                    position = str(row[1]).strip() if row[1] else ""
+                    department = str(row[2]).strip() if row[2] else ""
+                    
+                    # Обработка даты рождения
+                    birth_date_raw = row[3]
+                    birth_date = ""
+                    if birth_date_raw:
+                        if isinstance(birth_date_raw, datetime):
+                            birth_date = birth_date_raw.strftime("%Y-%m-%d")
+                        else:
+                            try:
+                                # Пробуем стандартный формат DD.MM.YYYY
+                                dt = datetime.strptime(str(birth_date_raw), "%d.%m.%Y")
+                                birth_date = dt.strftime("%Y-%m-%d")
+                            except ValueError:
+                                try:
+                                    # Пробуем формат YYYY-MM-DD
+                                    dt = datetime.strptime(str(birth_date_raw), "%Y-%m-%d")
+                                    birth_date = dt.strftime("%Y-%m-%d")
+                                except ValueError:
+                                    birth_date = str(birth_date_raw) # Оставляем как есть, если не распознали
+                    
+                    email = str(row[4]).strip().lower() if row[4] else ""
+                    phone_personal = str(row[5]).strip() if row[5] else ""
+                    phone_work = str(row[6]).strip() if row[6] else ""
+                    
+                    if not full_name or not email:
+                        errors.append(f"Строка {row_idx}: Отсутствует ФИО или Email")
+                        continue
+                    
+                    # Поиск существующего сотрудника по Email
+                    existing_emp = db.query(EmployeeDB).filter(EmployeeDB.email == email).first()
+                    
+                    emp_data = {
+                        "full_name": full_name,
+                        "position": position,
+                        "department": department,
+                        "email": email,
+                        "phone_personal": phone_personal,
+                        "phone_work": phone_work,
+                        "birth_date": birth_date,
+                        "timezone": "Europe/Moscow",
+                        "location": "Не указано",
+                        "is_on_vacation": False,
+                        "photo_url": None
+                    }
+                    
+                    if existing_emp:
+                        for key, value in emp_data.items():
+                            setattr(existing_emp, key, value)
+                        updated += 1
+                    else:
+                        new_emp = EmployeeDB(**emp_data)
+                        db.add(new_emp)
+                        created += 1
+                        
+                except Exception as e:
+                    errors.append(f"Строка {row_idx}: Ошибка обработки данных - {str(e)}")
+            
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(500, f"Критическая ошибка импорта: {str(e)}")
+        finally:
+            db.close()
+            
+    except Exception as e:
+        raise HTTPException(400, f"Ошибка чтения файла: {str(e)}. Убедитесь, что это корректный .xlsx файл.")
+        
+    return {
+        "created": created,
+        "updated": updated,
+        "errors": errors[:10]
+    }
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
