@@ -311,16 +311,14 @@ async def import_employees(file: UploadFile = File(...), _: AdminDB = Depends(ge
                             birth_date = birth_date_raw.strftime("%Y-%m-%d")
                         else:
                             try:
-                                # Пробуем стандартный формат DD.MM.YYYY
                                 dt = datetime.strptime(str(birth_date_raw), "%d.%m.%Y")
                                 birth_date = dt.strftime("%Y-%m-%d")
                             except ValueError:
                                 try:
-                                    # Пробуем формат YYYY-MM-DD
                                     dt = datetime.strptime(str(birth_date_raw), "%Y-%m-%d")
                                     birth_date = dt.strftime("%Y-%m-%d")
                                 except ValueError:
-                                    birth_date = str(birth_date_raw) # Оставляем как есть, если не распознали
+                                    birth_date = str(birth_date_raw)
                     
                     email = str(row[4]).strip().lower() if row[4] else ""
                     phone_personal = str(row[5]).strip() if row[5] else ""
@@ -333,6 +331,7 @@ async def import_employees(file: UploadFile = File(...), _: AdminDB = Depends(ge
                     # Поиск существующего сотрудника по Email
                     existing_emp = db.query(EmployeeDB).filter(EmployeeDB.email == email).first()
                     
+                    # Формируем данные для обновления/создания БЕЗ photo_url
                     emp_data = {
                         "full_name": full_name,
                         "position": position,
@@ -344,14 +343,16 @@ async def import_employees(file: UploadFile = File(...), _: AdminDB = Depends(ge
                         "timezone": "Europe/Moscow",
                         "location": "Не указано",
                         "is_on_vacation": False,
-                        "photo_url": None
+                        # photo_url НЕ включаем сюда, чтобы не затирать существующее фото
                     }
                     
                     if existing_emp:
+                        # Обновление: меняем только указанные поля, фото остается прежним
                         for key, value in emp_data.items():
                             setattr(existing_emp, key, value)
                         updated += 1
                     else:
+                        # Создание нового: фото будет None (или можно поставить дефолтное, если нужно)
                         new_emp = EmployeeDB(**emp_data)
                         db.add(new_emp)
                         created += 1
@@ -374,4 +375,5 @@ async def import_employees(file: UploadFile = File(...), _: AdminDB = Depends(ge
         "updated": updated,
         "errors": errors[:10]
     }
+
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
