@@ -21,7 +21,15 @@ export default function EmployeeList({ employees, loading, onSelect }) {
           >
             {/* Фото и Имя */}
             <div className="col-span-12 md:col-span-5 flex items-center gap-4">
-              <img src={emp.photo_url || '/placeholder.jpg'} alt="" className="w-12 h-12 rounded-full object-cover border-2 border-warm-100 bg-slate-50 flex-shrink-0 group-hover:border-warm-300 transition" />
+              {emp.photo_url ? (
+                <img 
+                  src={emp.photo_url} 
+                  alt="" 
+                  className="w-12 h-12 rounded-full object-cover border-2 border-warm-100 bg-slate-50 flex-shrink-0 group-hover:border-warm-300 transition" 
+                />
+              ) : (
+                <div className="w-12 h-12 rounded-full bg-white border-2 border-slate-200 flex-shrink-0"></div>
+              )}
               <div className="min-w-0">
                 <h3 className="font-semibold text-slate-800 truncate group-hover:text-brand-700 transition">{emp.full_name}</h3>
                 <p className="text-sm text-slate-500 md:hidden truncate">{emp.position} • {emp.department}</p>
@@ -31,7 +39,7 @@ export default function EmployeeList({ employees, loading, onSelect }) {
             {/* Должность */}
             <div className="col-span-12 md:col-span-3 hidden md:block text-sm text-slate-600 truncate">{emp.position}</div>
 
-            {/* Отдел */}
+            {/* Подразделение */}
             <div className="col-span-12 md:col-span-2 hidden md:block text-sm text-slate-500 truncate">{emp.department}</div>
           </div>
         ))}

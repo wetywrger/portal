@@ -36,16 +36,17 @@ export default function EmployeeCard({ employee, onClose }) {
           <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-2xl w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 transition">&times;</button>
           
           <div className="flex flex-col md:flex-row gap-6 mb-6">
-            <div className="relative group">
-              <img 
-                src={employee.photo_url || '/placeholder.jpg'} 
-                alt="Фото" 
-                onClick={handleImageClick}
-                className={`w-32 h-32 rounded-2xl object-cover border-4 border-warm-100 bg-slate-50 shadow-sm transition-all ${employee.photo_url ? 'cursor-pointer hover:opacity-90 hover:scale-[1.02]' : ''}`} 
-              />
-              {employee.photo_url && (
-                <div className="absolute inset-0 bg-black/30 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
-                  <svg className="w-8 h-8 text-white drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" /></svg>
+            <div className="relative">
+              {employee.photo_url ? (
+                <img 
+                  src={employee.photo_url} 
+                  alt="Фото" 
+                  onClick={handleImageClick}
+                  className="w-32 h-32 rounded-2xl object-cover border-4 border-warm-100 bg-slate-50 shadow-sm transition-all cursor-pointer hover:opacity-90 hover:scale-[1.02]" 
+                />
+              ) : (
+                <div className="w-32 h-32 rounded-2xl bg-white border-4 border-slate-200 shadow-sm flex items-center justify-center">
+                  {/* Просто белый квадрат, никаких иконок */}
                 </div>
               )}
             </div>
@@ -54,7 +55,6 @@ export default function EmployeeCard({ employee, onClose }) {
               <h2 className="text-2xl font-bold text-brand-800">{employee.full_name}</h2>
               <p className="text-warm-600 font-medium text-lg">{employee.position}</p>
               <div className="flex gap-2 mt-2 flex-wrap">
-                {/* Убран статус "На месте/В отпуске" */}
                 <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-slate-100 text-slate-700">{employee.department}</span>
               </div>
             </div>
@@ -66,7 +66,6 @@ export default function EmployeeCard({ employee, onClose }) {
             <InfoBlock label="Эл. почта" value={employee.email} />
             <InfoBlock label="Рабочий телефон" value={employee.phone_work} />
             <InfoBlock label="Личный телефон" value={employee.phone_personal} />
-            {/* Убран Часовой пояс */}
             
             {/* Измененное отображение даты рождения */}
             <InfoBlock label="Дата рождения" value={formatDateShort(employee.birth_date)} />
