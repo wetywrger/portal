@@ -155,7 +155,9 @@ export default function AdminDashboard({ token, onLogout }) {
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
           <h1 className="text-2xl font-bold text-brand-700">⚙️ Административная панель</h1>
-          <div className="flex items-center gap-3">
+          
+          {/* Блок управления: Поиск, Кнопка "На главную", Выход */}
+          <div className="flex items-center gap-3 w-full md:w-auto">
             <div className="relative w-full md:w-80">
               <input
                 type="text"
@@ -168,7 +170,19 @@ export default function AdminDashboard({ token, onLogout }) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
             </div>
-            <button onClick={onLogout} className="text-sm text-slate-500 hover:text-red-500 font-medium whitespace-nowrap">Выйти</button>
+            
+            {/* Кнопка возврата на главную (только иконка) */}
+            <a 
+              href="/" 
+              aria-label="На главную" 
+              className="p-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 hover:border-brand-300 text-slate-700 transition-all shadow-sm flex items-center justify-center"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+              </svg>
+            </a>
+
+            <button onClick={onLogout} className="text-sm text-slate-500 hover:text-red-500 font-medium whitespace-nowrap px-2">Выйти</button>
           </div>
         </div>
 
