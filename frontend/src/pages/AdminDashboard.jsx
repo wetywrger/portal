@@ -135,12 +135,28 @@ export default function AdminDashboard({ token, onLogout }) {
       }
       
       const result = await res.json();
-      let msg = `Готово! Создано: ${result.created}, Обновлено: ${result.updated}.`;
+      
+      let msgParts = [];
+      
+      if (result.created_count > 0) {
+        msgParts.push(`Добавлены сотрудники (${result.created_count}):\n• ${result.created_names.join('\n• ')}`);
+      }
+      
+      if (result.updated_count > 0) {
+        msgParts.push(`Обновлена информация по сотрудникам (${result.updated_count}):\n• ${result.updated_names.join('\n• ')}`);
+      }
+      
       if (result.errors.length > 0) {
-        msg += `\nОшибок: ${result.errors.length}. См. консоль.`;
+        msgParts.push(`Ошибок: ${result.errors.length}. См. консоль.`);
         console.warn('Ошибки импорта:', result.errors);
       }
-      setImportStatus(msg);
+
+      if (msgParts.length === 0) {
+        setImportStatus('Изменений не обнаружено.');
+      } else {
+        setImportStatus(msgParts.join('\n\n'));
+      }
+      
       fetchData(); 
     } catch (err) {
       setImportStatus('Ошибка импорта');

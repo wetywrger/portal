@@ -286,8 +286,8 @@ async def import_employees(file: UploadFile = File(...), _: AdminDB = Depends(ge
         # Пропускаем первые 2 строки (заголовки начинаются со 2-й, данные с 3-й)
         rows = list(ws.iter_rows(min_row=3, values_only=True))
         
-        created = 0
-        updated = 0
+        created_names = []
+        updated_names = []
         errors = []
         
         db = SessionLocal()
@@ -298,7 +298,7 @@ async def import_employees(file: UploadFile = File(...), _: AdminDB = Depends(ge
                     continue
                 
                 try:
-                    # Безопасное получение значений (защита от None)
+                    # Безопасное получение значений
                     full_name = str(row[0]).strip() if row[0] else ""
                     position = str(row[1]).strip() if row[1] else ""
                     department = str(row[2]).strip() if row[2] else ""
@@ -331,8 +331,8 @@ async def import_employees(file: UploadFile = File(...), _: AdminDB = Depends(ge
                     # Поиск существующего сотрудника по Email
                     existing_emp = db.query(EmployeeDB).filter(EmployeeDB.email == email).first()
                     
-                    # Формируем данные для обновления/создания БЕЗ photo_url
-                    emp_data = {
+                    # Новые данные для сравнения
+                    new_data = {
                         "full_name": full_name,
                         "position": position,
                         "department": department,
@@ -343,19 +343,28 @@ async def import_employees(file: UploadFile = File(...), _: AdminDB = Depends(ge
                         "timezone": "Europe/Moscow",
                         "location": "Не указано",
                         "is_on_vacation": False,
-                        # photo_url НЕ включаем сюда, чтобы не затирать существующее фото
+                        # photo_url не трогаем при импорте
                     }
                     
                     if existing_emp:
-                        # Обновление: меняем только указанные поля, фото остается прежним
-                        for key, value in emp_data.items():
-                            setattr(existing_emp, key, value)
-                        updated += 1
+                        # Проверка изменений
+                        has_changes = False
+                        for key, new_val in new_data.items():
+                            old_val = getattr(existing_emp, key, None)
+                            # Приводим к строке для корректного сравнения (None vs "")
+                            if str(old_val) != str(new_val):
+                                has_changes = True
+                                break
+                        
+                        if has_changes:
+                            for key, value in new_data.items():
+                                setattr(existing_emp, key, value)
+                            updated_names.append(full_name)
                     else:
-                        # Создание нового: фото будет None (или можно поставить дефолтное, если нужно)
-                        new_emp = EmployeeDB(**emp_data)
+                        # Создание нового
+                        new_emp = EmployeeDB(**new_data)
                         db.add(new_emp)
-                        created += 1
+                        created_names.append(full_name)
                         
                 except Exception as e:
                     errors.append(f"Строка {row_idx}: Ошибка обработки данных - {str(e)}")
@@ -371,8 +380,10 @@ async def import_employees(file: UploadFile = File(...), _: AdminDB = Depends(ge
         raise HTTPException(400, f"Ошибка чтения файла: {str(e)}. Убедитесь, что это корректный .xlsx файл.")
         
     return {
-        "created": created,
-        "updated": updated,
+        "created_count": len(created_names),
+        "updated_count": len(updated_names),
+        "created_names": created_names,
+        "updated_names": updated_names,
         "errors": errors[:10]
     }
 
