@@ -34,7 +34,7 @@ export default function EmployeeCard({ employee, onClose }) {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <InfoBlock label="Подразделение" value={employee.department} />
-            <InfoBlock label="Место работы" value={employee.location} />
+            <InfoBlock label="Рабочее место" value={employee.location} />
             <InfoBlock label="Эл. почта" value={employee.email} />
             <InfoBlock label="Рабочий телефон" value={employee.phone_work} />
             <InfoBlock label="Личный телефон" value={employee.phone_personal} />

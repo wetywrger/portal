@@ -259,7 +259,7 @@ export default function AdminDashboard({ token, onLogout }) {
                   <input className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-400 outline-none" placeholder="email@corp.ru" value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
                 </div>
                 <div className="space-y-2">
-                  <label className="block font-medium text-slate-600">Место работы</label>
+                  <label className="block font-medium text-slate-600">Рабочее место</label>
                   <input className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-400 outline-none" placeholder="Город / Офис" value={form.location} onChange={e => setForm({...form, location: e.target.value})} />
                 </div>
               </div>
