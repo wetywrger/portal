@@ -32,23 +32,28 @@ function PublicPortal() {
 
   const openCard = (id) => publicApi.employee(id).then(setSelectedEmployee).catch(console.error);
 
-  return (
+	  return (
     <div className="min-h-screen bg-brand-50 text-slate-800">
+      {/* Единый контейнер для выравнивания */}
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-4">
-        {/* Шапка: логотип слева, заголовок и поиск справа */}
+
+        {/* Шапка: Сетка 4 колонки. Логотип в 1-й, остальное во 2-4 */}
         <div className="grid md:grid-cols-4 gap-6 items-center mb-4">
-          <div className="md:col-span-1">
-            <img src="/logo.png" alt="Логотип" className="w-40 h-auto object-contain" />
+          {/* Колонка 1: Логотип (ЦЕНТРИРОВАН строго по середине колонки) */}
+          <div className="md:col-span-1 flex justify-center items-center h-full">
+            <img src="/logo.png" alt="Логотип" className="w-60 h-auto object-contain" />
           </div>
+
+          {/* Колонки 2-4: Заголовок и Поиск */}
           <div className="md:col-span-3 flex flex-col sm:flex-row sm:items-center gap-4 bg-white rounded-xl shadow-sm p-4 border border-brand-100">
             <h1 className="text-xl md:text-2xl font-bold text-brand-700 whitespace-nowrap">
               Корпоративный справочник
             </h1>
             <div className="flex items-center gap-3 flex-1 sm:justify-end">
               <SearchBar value={search} onChange={setSearch} />
-              <a 
-                href="/admin" 
-                aria-label="Административная панель" 
+              <a
+                href="/admin"
+                aria-label="Административная панель"
                 className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-brand-700 transition-colors flex items-center justify-center flex-shrink-0"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
@@ -60,12 +65,15 @@ function PublicPortal() {
           </div>
         </div>
 
-        {/* Основной контент: та же сетка для идеального выравнивания */}
+        {/* Основной контент: Та же сетка для идеального совпадения колонок */}
         <div className="grid md:grid-cols-4 gap-6">
+          {/* Колонка 1: Подразделения */}
           <aside className="md:col-span-1 bg-white rounded-xl shadow-sm p-4 h-fit border border-warm-100">
             <h2 className="text-lg font-semibold mb-3 text-warm-600">🏢 Подразделения</h2>
             <DepartmentList departments={departments} selected={selectedDept} onSelect={(d) => setSelectedDept(d === selectedDept ? null : d)} />
           </aside>
+
+          {/* Колонки 2-4: Список сотрудников */}
           <section className="md:col-span-3">
             <EmployeeList employees={employees} loading={loading} onSelect={openCard} />
           </section>
