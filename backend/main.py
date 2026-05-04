@@ -9,9 +9,9 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.staticfiles import StaticFiles
 from passlib.context import CryptContext
 from jose import JWTError, jwt
-from sqlalchemy import create_engine, Column, Integer, String, Boolean
+from sqlalchemy import create_engine, Column, Integer, String
 from sqlalchemy.orm import sessionmaker, declarative_base, Session
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 import openpyxl
 from io import BytesIO
 
@@ -45,11 +45,10 @@ class EmployeeDB(Base):
     email = Column(String, nullable=False)
     phone_personal = Column(String, nullable=False)
     phone_work = Column(String, nullable=False)
-    timezone = Column(String, nullable=False)
     birth_date = Column(String, nullable=False)
     location = Column(String, nullable=False)
-    is_on_vacation = Column(Boolean, default=False)
     deputy_id = Column(Integer, nullable=True)
+    # Поля hire_date, timezone, is_on_vacation удалены
 
 class AdminDB(Base):
     __tablename__ = "admins"
@@ -69,13 +68,11 @@ class EmployeeOut(BaseModel):
     email: str
     phone_personal: str
     phone_work: str
-    timezone: str
     birth_date: str
     location: str
-    is_on_vacation: bool
     deputy_id: Optional[int] = None
     deputy_name: Optional[str] = None
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True, extra="ignore")
 
 class EmployeeCreate(BaseModel):
     full_name: str
@@ -84,12 +81,11 @@ class EmployeeCreate(BaseModel):
     email: str
     phone_personal: str
     phone_work: str
-    timezone: str
     birth_date: str
     location: str
     photo_url: Optional[str] = None
-    is_on_vacation: bool = False
     deputy_id: Optional[int] = None
+    model_config = ConfigDict(extra="ignore")
 
 class EmployeeUpdate(BaseModel):
     full_name: Optional[str] = None
@@ -98,12 +94,11 @@ class EmployeeUpdate(BaseModel):
     email: Optional[str] = None
     phone_personal: Optional[str] = None
     phone_work: Optional[str] = None
-    timezone: Optional[str] = None
     birth_date: Optional[str] = None
     location: Optional[str] = None
     photo_url: Optional[str] = None
-    is_on_vacation: Optional[bool] = None
     deputy_id: Optional[int] = None
+    model_config = ConfigDict(extra="ignore")
 
 # --- Auth Helpers ---
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -165,7 +160,6 @@ def seed_data():
             print(f"✅ Администратор создан: {admin_user} / {admin_pass}")
         else:
             print("ℹ️ Администратор уже существует в БД.")
-
         print("🚀 Бэкенд успешно запущен. База готова к заполнению.")
     finally:
         db.close()
@@ -221,8 +215,7 @@ def admin_get_employees(db: Session = Depends(get_db), _: AdminDB = Depends(get_
 
 @app.post("/api/admin/employees", status_code=201)
 def admin_create_employee(data: EmployeeCreate, db: Session = Depends(get_db), _: AdminDB = Depends(get_current_admin)):
-    emp_data = data.model_dump()
-    emp_data.pop("hire_date", None)
+    emp_data = data.model_dump(exclude_unset=True)
     new = EmployeeDB(**emp_data)
     db.add(new)
     db.commit()
@@ -235,7 +228,6 @@ def admin_update_employee(emp_id: int, data: EmployeeUpdate, db: Session = Depen
     if not emp:
         raise HTTPException(404, "Не найден")
     update_data = data.model_dump(exclude_unset=True)
-    update_data.pop("hire_date", None)
     for k, v in update_data.items():
         setattr(emp, k, v)
     db.commit()
@@ -282,8 +274,7 @@ async def import_employees(file: UploadFile = File(...), _: AdminDB = Depends(ge
         contents = await file.read()
         wb = openpyxl.load_workbook(BytesIO(contents))
         ws = wb.active
-        
-        # Пропускаем первые 2 строки (заголовки начинаются со 2-й, данные с 3-й)
+        # Данные начинаются с 3-й строки
         rows = list(ws.iter_rows(min_row=3, values_only=True))
         
         created_names = []
@@ -293,33 +284,14 @@ async def import_employees(file: UploadFile = File(...), _: AdminDB = Depends(ge
         db = SessionLocal()
         try:
             for row_idx, row in enumerate(rows, start=3):
-                # Пропуск полностью пустых строк
                 if not any(row): 
                     continue
                 
                 try:
-                    # Безопасное получение значений
                     full_name = str(row[0]).strip() if row[0] else ""
                     position = str(row[1]).strip() if row[1] else ""
                     department = str(row[2]).strip() if row[2] else ""
-                    
-                    # Обработка даты рождения
                     birth_date_raw = row[3]
-                    birth_date = ""
-                    if birth_date_raw:
-                        if isinstance(birth_date_raw, datetime):
-                            birth_date = birth_date_raw.strftime("%Y-%m-%d")
-                        else:
-                            try:
-                                dt = datetime.strptime(str(birth_date_raw), "%d.%m.%Y")
-                                birth_date = dt.strftime("%Y-%m-%d")
-                            except ValueError:
-                                try:
-                                    dt = datetime.strptime(str(birth_date_raw), "%Y-%m-%d")
-                                    birth_date = dt.strftime("%Y-%m-%d")
-                                except ValueError:
-                                    birth_date = str(birth_date_raw)
-                    
                     email = str(row[4]).strip().lower() if row[4] else ""
                     phone_personal = str(row[5]).strip() if row[5] else ""
                     phone_work = str(row[6]).strip() if row[6] else ""
@@ -328,41 +300,59 @@ async def import_employees(file: UploadFile = File(...), _: AdminDB = Depends(ge
                         errors.append(f"Строка {row_idx}: Отсутствует ФИО или Email")
                         continue
                     
-                    # Поиск существующего сотрудника по Email
+                    # Парсинг даты
+                    birth_date = ""
+                    if birth_date_raw:
+                        if isinstance(birth_date_raw, datetime):
+                            birth_date = birth_date_raw.strftime("%Y-%m-%d")
+                        else:
+                            try:
+                                birth_date = datetime.strptime(str(birth_date_raw), "%d.%m.%Y").strftime("%Y-%m-%d")
+                            except ValueError:
+                                try:
+                                    birth_date = datetime.strptime(str(birth_date_raw), "%Y-%m-%d").strftime("%Y-%m-%d")
+                                except ValueError:
+                                    birth_date = str(birth_date_raw)
+                    
+                    # 🟢 Формируем словарь ТОЛЬКО с полями из Excel. location ИСКЛЮЧЕН.
+                    excel_data = {"email": email}
+                    if full_name: excel_data["full_name"] = full_name
+                    if position: excel_data["position"] = position
+                    if department: excel_data["department"] = department
+                    if birth_date: excel_data["birth_date"] = birth_date
+                    if phone_personal: excel_data["phone_personal"] = phone_personal
+                    if phone_work: excel_data["phone_work"] = phone_work
+                    
                     existing_emp = db.query(EmployeeDB).filter(EmployeeDB.email == email).first()
                     
-                    # Новые данные для сравнения
-                    new_data = {
-                        "full_name": full_name,
-                        "position": position,
-                        "department": department,
-                        "email": email,
-                        "phone_personal": phone_personal,
-                        "phone_work": phone_work,
-                        "birth_date": birth_date,
-                        "timezone": "Europe/Moscow",
-                        "location": "Не указано",
-                        "is_on_vacation": False,
-                        # photo_url не трогаем при импорте
-                    }
-                    
                     if existing_emp:
-                        # Проверка изменений
+                        # Проверяем реальные изменения
                         has_changes = False
-                        for key, new_val in new_data.items():
+                        for key, new_val in excel_data.items():
                             old_val = getattr(existing_emp, key, None)
-                            # Приводим к строке для корректного сравнения (None vs "")
-                            if str(old_val) != str(new_val):
+                            if str(old_val or "") != str(new_val or ""):
                                 has_changes = True
                                 break
                         
                         if has_changes:
-                            for key, value in new_data.items():
+                            for key, value in excel_data.items():
                                 setattr(existing_emp, key, value)
                             updated_names.append(full_name)
                     else:
-                        # Создание нового
-                        new_emp = EmployeeDB(**new_data)
+                        # Создание нового (подставляем безопасные дефолты для NOT NULL полей)
+                        new_emp_data = {
+                            "full_name": full_name,
+                            "email": email,
+                            "position": position or "Должность не указана",
+                            "department": department or "Подразделение не указано",
+                            "birth_date": birth_date or "1900-01-01",
+                            "phone_personal": phone_personal or "",
+                            "phone_work": phone_work or "",
+                            "location": "Не указано",
+                            "photo_url": None,
+                            "deputy_id": None
+                        }
+                        new_emp = EmployeeDB(**new_emp_data)
                         db.add(new_emp)
                         created_names.append(full_name)
                         
