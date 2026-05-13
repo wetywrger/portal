@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 
 const INITIAL_EMP = { 
   full_name: '', position: '', department: '', email: '', phone_personal: '', 
-  phone_work: '', timezone: 'Europe/Moscow', birth_date: '', 
-  location: '', is_on_vacation: false, deputy_id: null, photo_url: '' 
+  phone_work: '', birth_date: '', location: '', deputy_id: null, photo_url: '' 
 };
 
 export default function AdminDashboard({ token, onLogout }) {
@@ -114,7 +113,7 @@ export default function AdminDashboard({ token, onLogout }) {
     
     if (!file.name.endsWith('.xlsx')) {
       alert('Пожалуйста, выберите файл формата .xlsx');
-      e.target.value = ''; // Сброс input
+      e.target.value = '';
       return;
     }
 
@@ -137,26 +136,18 @@ export default function AdminDashboard({ token, onLogout }) {
       const result = await res.json();
       
       let msgParts = [];
-      
       if (result.created_count > 0) {
         msgParts.push(`Добавлены сотрудники (${result.created_count}):\n• ${result.created_names.join('\n• ')}`);
       }
-      
       if (result.updated_count > 0) {
         msgParts.push(`Обновлена информация по сотрудникам (${result.updated_count}):\n• ${result.updated_names.join('\n• ')}`);
       }
-      
       if (result.errors.length > 0) {
         msgParts.push(`Ошибок: ${result.errors.length}. См. консоль.`);
         console.warn('Ошибки импорта:', result.errors);
       }
 
-      if (msgParts.length === 0) {
-        setImportStatus('Изменений не обнаружено.');
-      } else {
-        setImportStatus(msgParts.join('\n\n'));
-      }
-      
+      setImportStatus(msgParts.length > 0 ? msgParts.join('\n\n') : 'Изменений не обнаружено.');
       fetchData(); 
     } catch (err) {
       setImportStatus('Ошибка импорта');
@@ -171,38 +162,18 @@ export default function AdminDashboard({ token, onLogout }) {
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
           <h1 className="text-2xl font-bold text-brand-700">⚙️ Административная панель</h1>
-          
-          {/* Блок управления: Поиск, Кнопка "На главную", Выход */}
           <div className="flex items-center gap-3 w-full md:w-auto">
             <div className="relative w-full md:w-80">
-              <input
-                type="text"
-                placeholder="Поиск сотрудника..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full px-4 py-2 pl-10 rounded-lg border border-brand-200 bg-brand-50 focus:outline-none focus:ring-2 focus:ring-brand-400 transition-all"
-              />
-              <svg className="absolute left-3 top-2.5 w-5 h-5 text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
+              <input type="text" placeholder="Поиск сотрудника..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full px-4 py-2 pl-10 rounded-lg border border-brand-200 bg-brand-50 focus:outline-none focus:ring-2 focus:ring-brand-400 transition-all" />
+              <svg className="absolute left-3 top-2.5 w-5 h-5 text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
             </div>
-            
-            {/* Кнопка возврата на главную (только иконка) */}
-            <a 
-              href="/" 
-              aria-label="На главную" 
-              className="p-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 hover:border-brand-300 text-slate-700 transition-all shadow-sm flex items-center justify-center"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-              </svg>
+            <a href="/" aria-label="На главную" className="p-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 hover:border-brand-300 text-slate-700 transition-all shadow-sm flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
             </a>
-
             <button onClick={onLogout} className="text-sm text-slate-500 hover:text-red-500 font-medium whitespace-nowrap px-2">Выйти</button>
           </div>
         </div>
 
-        {/* Блок импорта */}
         <div className="mb-6 bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div>
             <h3 className="font-semibold text-slate-700">Импорт сотрудников из Excel</h3>
@@ -214,25 +185,19 @@ export default function AdminDashboard({ token, onLogout }) {
               Выбрать файл
               <input type="file" accept=".xlsx" onChange={handleImport} className="hidden" />
             </label>
-            {importStatus && <span className={`text-sm ${importStatus.includes('Ошибка') ? 'text-red-500' : 'text-green-600'}`}>{importStatus}</span>}
+            {importStatus && <span className={`text-sm whitespace-pre-line ${importStatus.includes('Ошибка') ? 'text-red-500' : 'text-green-600'}`}>{importStatus}</span>}
           </div>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 bg-white p-5 rounded-xl shadow-sm border border-slate-100">
-            <h2 className="text-lg font-semibold mb-4 text-brand-600">
-              Сотрудники {search && <span className="text-slate-400 font-normal text-base">(найдено: {filteredEmployees.length})</span>}
-            </h2>
+            <h2 className="text-lg font-semibold mb-4 text-brand-600">Сотрудники {search && <span className="text-slate-400 font-normal text-base">(найдено: {filteredEmployees.length})</span>}</h2>
             <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
               {filteredEmployees.map(e => (
                 <div key={e.id} className="flex justify-between items-center p-3 bg-slate-50 rounded-lg border border-slate-100 hover:border-brand-200 transition">
                   <div className="flex items-center gap-3">
                     {e.photo_url ? (
-                      <img 
-                        src={e.photo_url} 
-                        className="w-10 h-10 rounded-full object-cover border border-warm-100 bg-slate-50" 
-                        alt="" 
-                      />
+                      <img src={e.photo_url} className="w-10 h-10 rounded-full object-cover border border-warm-100 bg-slate-50" alt="" />
                     ) : (
                       <div className="w-10 h-10 rounded-full bg-white border border-slate-200"></div>
                     )}
@@ -247,11 +212,7 @@ export default function AdminDashboard({ token, onLogout }) {
                   </div>
                 </div>
               ))}
-              {filteredEmployees.length === 0 && (
-                <p className="text-slate-400 text-sm text-center py-4">
-                  {search ? 'Сотрудники не найдены по вашему запросу' : 'Сотрудники не найдены'}
-                </p>
-              )}
+              {filteredEmployees.length === 0 && <p className="text-slate-400 text-sm text-center py-4">{search ? 'Сотрудники не найдены по вашему запросу' : 'Сотрудники не найдены'}</p>}
             </div>
           </div>
 

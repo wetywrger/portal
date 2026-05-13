@@ -48,7 +48,6 @@ class EmployeeDB(Base):
     birth_date = Column(String, nullable=False)
     location = Column(String, nullable=False)
     deputy_id = Column(Integer, nullable=True)
-    # Поля hire_date, timezone, is_on_vacation удалены
 
 class AdminDB(Base):
     __tablename__ = "admins"
@@ -274,7 +273,6 @@ async def import_employees(file: UploadFile = File(...), _: AdminDB = Depends(ge
         contents = await file.read()
         wb = openpyxl.load_workbook(BytesIO(contents))
         ws = wb.active
-        # Данные начинаются с 3-й строки
         rows = list(ws.iter_rows(min_row=3, values_only=True))
         
         created_names = []
@@ -300,7 +298,6 @@ async def import_employees(file: UploadFile = File(...), _: AdminDB = Depends(ge
                         errors.append(f"Строка {row_idx}: Отсутствует ФИО или Email")
                         continue
                     
-                    # Парсинг даты
                     birth_date = ""
                     if birth_date_raw:
                         if isinstance(birth_date_raw, datetime):
@@ -314,7 +311,7 @@ async def import_employees(file: UploadFile = File(...), _: AdminDB = Depends(ge
                                 except ValueError:
                                     birth_date = str(birth_date_raw)
                     
-                    # 🟢 Формируем словарь ТОЛЬКО с полями из Excel. location ИСКЛЮЧЕН.
+                    # 🟢 Собираем ТОЛЬКО те поля, что есть в Excel. location ИСКЛЮЧЕН.
                     excel_data = {"email": email}
                     if full_name: excel_data["full_name"] = full_name
                     if position: excel_data["position"] = position
@@ -326,7 +323,6 @@ async def import_employees(file: UploadFile = File(...), _: AdminDB = Depends(ge
                     existing_emp = db.query(EmployeeDB).filter(EmployeeDB.email == email).first()
                     
                     if existing_emp:
-                        # Проверяем реальные изменения
                         has_changes = False
                         for key, new_val in excel_data.items():
                             old_val = getattr(existing_emp, key, None)
@@ -339,7 +335,7 @@ async def import_employees(file: UploadFile = File(...), _: AdminDB = Depends(ge
                                 setattr(existing_emp, key, value)
                             updated_names.append(full_name)
                     else:
-                        # Создание нового (подставляем безопасные дефолты для NOT NULL полей)
+                        # Для НОВЫХ сотрудников подставляем безопасные дефолты для NOT NULL полей
                         new_emp_data = {
                             "full_name": full_name,
                             "email": email,
