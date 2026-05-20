@@ -1,6 +1,6 @@
 import os
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from typing import Optional, List
 
 from fastapi import FastAPI, HTTPException, Depends, Query, UploadFile, File
@@ -71,6 +71,7 @@ class EmployeeOut(BaseModel):
     location: str
     deputy_id: Optional[int] = None
     deputy_name: Optional[str] = None
+    days_until_birthday: Optional[int] = None  # 🆕 Добавлено для именинников
     model_config = ConfigDict(from_attributes=True, extra="ignore")
 
 class EmployeeCreate(BaseModel):
@@ -106,7 +107,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
-def create_access_token(data: dict) -> str:
+def create_access_token(data: dict) -> str:  # ✅ Добавлено `data:` перед `dict`
     to_encode = data.copy()
     expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
@@ -152,7 +153,6 @@ def seed_data():
     try:
         admin_user = os.getenv("ADMIN_USERNAME", "admin")
         admin_pass = os.getenv("ADMIN_PASSWORD", "admin123")
-
         if not db.query(AdminDB).first():
             db.add(AdminDB(username=admin_user, hashed_password=get_password_hash(admin_pass)))
             db.commit()
@@ -180,12 +180,7 @@ def get_employees(department: Optional[str] = Query(None), search: Optional[str]
     all_employees = db.query(EmployeeDB).all()
     if search:
         s_lower = search.lower()
-        all_employees = [
-            e for e in all_employees
-            if s_lower in e.full_name.lower()
-            or s_lower in e.position.lower()
-            or s_lower in e.department.lower()
-        ]
+        all_employees = [e for e in all_employees if s_lower in e.full_name.lower() or s_lower in e.position.lower() or s_lower in e.department.lower()]
     if department:
         all_employees = [e for e in all_employees if e.department == department]
     all_employees.sort(key=lambda e: e.full_name.lower())
@@ -194,9 +189,31 @@ def get_employees(department: Optional[str] = Query(None), search: Optional[str]
 @app.get("/api/employees/{emp_id}", response_model=EmployeeOut)
 def get_employee(emp_id: int, db: Session = Depends(get_db)):
     emp = db.query(EmployeeDB).filter(EmployeeDB.id == emp_id).first()
-    if not emp:
-        raise HTTPException(404, "Не найден")
+    if not emp: raise HTTPException(404, "Не найден")
     return _emp_out(emp, db)
+
+# 🎂 ЭНДПОИНТ ИМЕНИННИКОВ
+@app.get("/api/birthdays", response_model=List[EmployeeOut])
+def get_birthdays(db: Session = Depends(get_db)):
+    current_date = date.today()
+    result = []
+    for emp in db.query(EmployeeDB).all():
+        if not emp.birth_date: continue
+        try:
+            b = datetime.strptime(emp.birth_date, "%Y-%m-%d").date()
+            days_diff = 999
+            for yr_offset in [-1, 0, 1]:
+                try: test_bday = date(current_date.year + yr_offset, b.month, b.day)
+                except ValueError: test_bday = date(current_date.year + yr_offset, 3, 1)
+                diff = (test_bday - current_date).days
+                if -5 <= diff <= 5 and abs(diff) < abs(days_diff): days_diff = diff
+            if days_diff != 999:
+                out = _emp_out(emp, db)
+                out.days_until_birthday = days_diff
+                result.append(out)
+        except: continue
+    result.sort(key=lambda x: x.days_until_birthday if x.days_until_birthday >= 0 else x.days_until_birthday + 366)
+    return result
 
 # --- Admin Endpoints ---
 @app.post("/api/admin/login")
@@ -216,37 +233,29 @@ def admin_get_employees(db: Session = Depends(get_db), _: AdminDB = Depends(get_
 def admin_create_employee(data: EmployeeCreate, db: Session = Depends(get_db), _: AdminDB = Depends(get_current_admin)):
     emp_data = data.model_dump(exclude_unset=True)
     new = EmployeeDB(**emp_data)
-    db.add(new)
-    db.commit()
-    db.refresh(new)
+    db.add(new); db.commit(); db.refresh(new)
     return {"id": new.id}
 
 @app.put("/api/admin/employees/{emp_id}")
 def admin_update_employee(emp_id: int, data: EmployeeUpdate, db: Session = Depends(get_db), _: AdminDB = Depends(get_current_admin)):
     emp = db.query(EmployeeDB).filter(EmployeeDB.id == emp_id).first()
-    if not emp:
-        raise HTTPException(404, "Не найден")
+    if not emp: raise HTTPException(404, "Не найден")
     update_data = data.model_dump(exclude_unset=True)
-    for k, v in update_data.items():
-        setattr(emp, k, v)
-    db.commit()
-    db.refresh(emp)
+    for k, v in update_data.items(): setattr(emp, k, v)
+    db.commit(); db.refresh(emp)
     return {"id": emp.id}
 
 @app.delete("/api/admin/employees/{emp_id}")
 def admin_delete_employee(emp_id: int, db: Session = Depends(get_db), _: AdminDB = Depends(get_current_admin)):
     emp = db.query(EmployeeDB).filter(EmployeeDB.id == emp_id).first()
-    if not emp:
-        raise HTTPException(404, "Не найден")
-    db.delete(emp)
-    db.commit()
+    if not emp: raise HTTPException(404, "Не найден")
+    db.delete(emp); db.commit()
     return {"status": "ok"}
 
 @app.delete("/api/admin/departments/{dept_name}")
 def admin_delete_department(dept_name: str, db: Session = Depends(get_db), _: AdminDB = Depends(get_current_admin)):
     emp_count = db.query(EmployeeDB).filter(EmployeeDB.department == dept_name).count()
-    if emp_count > 0:
-        raise HTTPException(400, "В отделе есть сотрудники. Сначала перенесите их.")
+    if emp_count > 0: raise HTTPException(400, "В отделе есть сотрудники. Сначала перенесите их.")
     return {"status": "ok"}
 
 @app.post("/api/admin/upload-photo")
@@ -259,16 +268,13 @@ async def upload_photo(file: UploadFile = File(...), _: AdminDB = Depends(get_cu
     ext = file.filename.split(".")[-1] if "." in file.filename else "jpg"
     filename = f"{uuid.uuid4().hex}.{ext}"
     filepath = os.path.join(UPLOAD_DIR, filename)
-    with open(filepath, "wb") as f:
-        f.write(content)
+    with open(filepath, "wb") as f: f.write(content)
     return {"url": f"/uploads/{filename}"}
 
-# --- Import Employees Endpoint ---
 @app.post("/api/admin/import-employees")
 async def import_employees(file: UploadFile = File(...), _: AdminDB = Depends(get_current_admin)):
     if not file.filename.endswith('.xlsx'):
         raise HTTPException(400, "Разрешены только файлы .xlsx (Excel 2007+)")
-    
     try:
         contents = await file.read()
         wb = openpyxl.load_workbook(BytesIO(contents))
@@ -282,8 +288,7 @@ async def import_employees(file: UploadFile = File(...), _: AdminDB = Depends(ge
         db = SessionLocal()
         try:
             for row_idx, row in enumerate(rows, start=3):
-                if not any(row): 
-                    continue
+                if not any(row): continue
                 
                 try:
                     full_name = str(row[0]).strip() if row[0] else ""
@@ -303,15 +308,11 @@ async def import_employees(file: UploadFile = File(...), _: AdminDB = Depends(ge
                         if isinstance(birth_date_raw, datetime):
                             birth_date = birth_date_raw.strftime("%Y-%m-%d")
                         else:
-                            try:
-                                birth_date = datetime.strptime(str(birth_date_raw), "%d.%m.%Y").strftime("%Y-%m-%d")
+                            try: birth_date = datetime.strptime(str(birth_date_raw), "%d.%m.%Y").strftime("%Y-%m-%d")
                             except ValueError:
-                                try:
-                                    birth_date = datetime.strptime(str(birth_date_raw), "%Y-%m-%d").strftime("%Y-%m-%d")
-                                except ValueError:
-                                    birth_date = str(birth_date_raw)
+                                try: birth_date = datetime.strptime(str(birth_date_raw), "%Y-%m-%d").strftime("%Y-%m-%d")
+                                except ValueError: birth_date = str(birth_date_raw)
                     
-                    # 🟢 Собираем ТОЛЬКО те поля, что есть в Excel. location ИСКЛЮЧЕН.
                     excel_data = {"email": email}
                     if full_name: excel_data["full_name"] = full_name
                     if position: excel_data["position"] = position
@@ -335,42 +336,29 @@ async def import_employees(file: UploadFile = File(...), _: AdminDB = Depends(ge
                                 setattr(existing_emp, key, value)
                             updated_names.append(full_name)
                     else:
-                        # Для НОВЫХ сотрудников подставляем безопасные дефолты для NOT NULL полей
                         new_emp_data = {
-                            "full_name": full_name,
-                            "email": email,
+                            "full_name": full_name, "email": email,
                             "position": position or "Должность не указана",
                             "department": department or "Подразделение не указано",
                             "birth_date": birth_date or "1900-01-01",
                             "phone_personal": phone_personal or "",
                             "phone_work": phone_work or "",
-                            "location": "Не указано",
-                            "photo_url": None,
-                            "deputy_id": None
+                            "location": "Не указано", "photo_url": None, "deputy_id": None
                         }
                         new_emp = EmployeeDB(**new_emp_data)
                         db.add(new_emp)
                         created_names.append(full_name)
-                        
                 except Exception as e:
                     errors.append(f"Строка {row_idx}: Ошибка обработки данных - {str(e)}")
-            
             db.commit()
         except Exception as e:
             db.rollback()
             raise HTTPException(500, f"Критическая ошибка импорта: {str(e)}")
         finally:
             db.close()
-            
     except Exception as e:
         raise HTTPException(400, f"Ошибка чтения файла: {str(e)}. Убедитесь, что это корректный .xlsx файл.")
         
-    return {
-        "created_count": len(created_names),
-        "updated_count": len(updated_names),
-        "created_names": created_names,
-        "updated_names": updated_names,
-        "errors": errors[:10]
-    }
+    return {"created_count": len(created_names), "updated_count": len(updated_names), "created_names": created_names, "updated_names": updated_names, "errors": errors[:10]}
 
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
