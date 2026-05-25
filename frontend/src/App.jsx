@@ -6,7 +6,7 @@ import EmployeeList from './components/EmployeeList';
 import EmployeeCard from './components/EmployeeCard';
 import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
-import BirthdaysPage from './pages/BirthdaysPage'; // 🆕
+import BirthdaysPage from './pages/BirthdaysPage'; // 🆕 Импорт страницы
 import { publicApi } from './api';
 
 function PublicPortal() {
@@ -18,7 +18,10 @@ function PublicPortal() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    publicApi.departments().then(setDepartments).catch(console.error).finally(() => setLoading(false));
+    publicApi.departments()
+      .then(setDepartments)
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
@@ -84,7 +87,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<PublicPortal />} />
-        <Route path="/birthdays" element={<BirthdaysPage />} /> {/* 🆕 */}
+        <Route path="/birthdays" element={<BirthdaysPage />} /> {/* 🆕 Маршрут */}
         <Route path="/admin" element={token ? <AdminDashboard token={token} onLogout={handleLogout} /> : <AdminLogin onLogin={handleLogin} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

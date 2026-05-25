@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 
-const INITIAL_EMP = { 
-  full_name: '', position: '', department: '', email: '', phone_personal: '', 
-  phone_work: '', birth_date: '', location: '', deputy_id: null, photo_url: '' 
+const INITIAL_EMP = {
+  full_name: '', position: '', department: '', email: '', phone_personal: '',
+  phone_work: '', birth_date: '', location: '', deputy_id: null, photo_url: ''
 };
 
 export default function AdminDashboard({ token, onLogout }) {
@@ -25,7 +25,6 @@ export default function AdminDashboard({ token, onLogout }) {
       const data = await empRes.json();
       setEmployees(data);
       setFilteredEmployees(data);
-
       const deptRes = await fetch('/api/departments');
       if (deptRes.ok) setDepartments(await deptRes.json());
     } catch (e) { console.error(e); alert('Ошибка сети'); }
@@ -33,13 +32,12 @@ export default function AdminDashboard({ token, onLogout }) {
   };
 
   useEffect(() => { fetchData(); }, [token]);
-
   useEffect(() => {
     if (!search.trim()) {
       setFilteredEmployees(employees);
     } else {
       const s = search.toLowerCase();
-      const filtered = employees.filter(emp => 
+      const filtered = employees.filter(emp =>
         emp.full_name.toLowerCase().includes(s) ||
         emp.position.toLowerCase().includes(s) ||
         emp.department.toLowerCase().includes(s) ||
@@ -110,7 +108,6 @@ export default function AdminDashboard({ token, onLogout }) {
   const handleImport = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    
     if (!file.name.endsWith('.xlsx')) {
       alert('Пожалуйста, выберите файл формата .xlsx');
       e.target.value = '';
@@ -134,17 +131,17 @@ export default function AdminDashboard({ token, onLogout }) {
       }
       
       const result = await res.json();
-      
       let msgParts = [];
+      
       if (result.created_count > 0) {
-        msgParts.push(`Добавлены сотрудники (${result.created_count}):\n• ${result.created_names.join('\n• ')}`);
+        msgParts.push(`✅ Добавлены сотрудники (${result.created_count}):\n• ${result.created_names.join('\n• ')}`);
       }
-      if (result.updated_count > 0) {
-        msgParts.push(`Обновлена информация по сотрудникам (${result.updated_count}):\n• ${result.updated_names.join('\n• ')}`);
+      // Выводим предупреждения вместо обновлений
+      if (result.warnings && result.warnings.length > 0) {
+        msgParts.push(`⚠️ Требуют ручной проверки (${result.warnings.length}):\n• ${result.warnings.join('\n• ')}`);
       }
-      if (result.errors.length > 0) {
-        msgParts.push(`Ошибок: ${result.errors.length}. См. консоль.`);
-        console.warn('Ошибки импорта:', result.errors);
+      if (result.errors && result.errors.length > 0) {
+        msgParts.push(`❌ Ошибок импорта: ${result.errors.length}`);
       }
 
       setImportStatus(msgParts.length > 0 ? msgParts.join('\n\n') : 'Изменений не обнаружено.');
@@ -185,7 +182,14 @@ export default function AdminDashboard({ token, onLogout }) {
               Выбрать файл
               <input type="file" accept=".xlsx" onChange={handleImport} className="hidden" />
             </label>
-            {importStatus && <span className={`text-sm whitespace-pre-line ${importStatus.includes('Ошибка') ? 'text-red-500' : 'text-green-600'}`}>{importStatus}</span>}
+            {importStatus && (
+              <span className={`text-sm whitespace-pre-line ${
+                importStatus.includes('Ошибка') || importStatus.includes('❌') ? 'text-red-500' : 
+                importStatus.includes('⚠️') ? 'text-orange-500' : 'text-green-600'
+              }`}>
+                {importStatus}
+              </span>
+            )}
           </div>
         </div>
 
@@ -238,42 +242,18 @@ export default function AdminDashboard({ token, onLogout }) {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="block font-medium text-slate-600">ФИО</label>
-                <input className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-400 outline-none" placeholder="Фамилия Имя Отчество" value={form.full_name} onChange={e => setForm({...form, full_name: e.target.value})} />
-              </div>
-              <div className="space-y-2">
-                <label className="block font-medium text-slate-600">Должность</label>
-                <input className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-400 outline-none" placeholder="Например: Менеджер" value={form.position} onChange={e => setForm({...form, position: e.target.value})} />
-              </div>
-              <div className="space-y-2">
-                <label className="block font-medium text-slate-600">Подразделение</label>
-                <input className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-400 outline-none" placeholder="Например: Продажи" value={form.department} onChange={e => setForm({...form, department: e.target.value})} />
+              <div className="space-y-2"><label className="block font-medium text-slate-600">ФИО</label><input className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-400 outline-none" placeholder="Фамилия Имя Отчество" value={form.full_name} onChange={e => setForm({...form, full_name: e.target.value})} /></div>
+              <div className="space-y-2"><label className="block font-medium text-slate-600">Должность</label><input className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-400 outline-none" placeholder="Например: Менеджер" value={form.position} onChange={e => setForm({...form, position: e.target.value})} /></div>
+              <div className="space-y-2"><label className="block font-medium text-slate-600">Подразделение</label><input className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-400 outline-none" placeholder="Например: Продажи" value={form.department} onChange={e => setForm({...form, department: e.target.value})} /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2"><label className="block font-medium text-slate-600">Эл. почта</label><input className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-400 outline-none" placeholder="email@corp.ru" value={form.email} onChange={e => setForm({...form, email: e.target.value})} /></div>
+                <div className="space-y-2"><label className="block font-medium text-slate-600">Рабочее место</label><input className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-400 outline-none" placeholder="Город / Офис" value={form.location} onChange={e => setForm({...form, location: e.target.value})} /></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <label className="block font-medium text-slate-600">Эл. почта</label>
-                  <input className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-400 outline-none" placeholder="email@corp.ru" value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
-                </div>
-                <div className="space-y-2">
-                  <label className="block font-medium text-slate-600">Рабочее место</label>
-                  <input className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-400 outline-none" placeholder="Город / Офис" value={form.location} onChange={e => setForm({...form, location: e.target.value})} />
-                </div>
+                <div className="space-y-2"><label className="block font-medium text-slate-600">Личный телефон</label><input className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-400 outline-none" placeholder="+7..." value={form.phone_personal} onChange={e => setForm({...form, phone_personal: e.target.value})} /></div>
+                <div className="space-y-2"><label className="block font-medium text-slate-600">Рабочий телефон</label><input className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-400 outline-none" placeholder="+7..." value={form.phone_work} onChange={e => setForm({...form, phone_work: e.target.value})} /></div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <label className="block font-medium text-slate-600">Личный телефон</label>
-                  <input className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-400 outline-none" placeholder="+7..." value={form.phone_personal} onChange={e => setForm({...form, phone_personal: e.target.value})} />
-                </div>
-                <div className="space-y-2">
-                  <label className="block font-medium text-slate-600">Рабочий телефон</label>
-                  <input className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-400 outline-none" placeholder="+7..." value={form.phone_work} onChange={e => setForm({...form, phone_work: e.target.value})} />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label className="block font-medium text-slate-600">Дата рождения</label>
-                <input className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-400 outline-none" type="date" value={form.birth_date} onChange={e => setForm({...form, birth_date: e.target.value})} />
-              </div>
+              <div className="space-y-2"><label className="block font-medium text-slate-600">Дата рождения</label><input className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-400 outline-none" type="date" value={form.birth_date} onChange={e => setForm({...form, birth_date: e.target.value})} /></div>
               
               <button disabled={uploading} className="w-full bg-brand-600 hover:bg-brand-700 disabled:bg-slate-400 text-white py-2 rounded-lg font-medium mt-2 transition" type="submit">
                 {uploading ? 'Загрузка...' : (editEmp ? 'Сохранить изменения' : 'Добавить сотрудника')}
