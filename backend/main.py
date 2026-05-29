@@ -29,6 +29,29 @@ os.makedirs(DB_DIR, exist_ok=True)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/admin/login")
 
+# Порядок старшинства должностей (чем меньше число, тем выше должность)
+POSITION_HIERARCHY = {
+    "директор": 1,
+    "технический директор": 2,
+    "заместитель директора": 3,
+    "руководитель": 4,
+    "главный": 5,
+    "ведущий": 6,
+    "специалист": 7,
+	"инженер": 7,
+    "младший": 8,
+    "помощник": 9
+}
+
+def get_position_weight(position: str) -> int:
+    if not position: return 999
+    pos_lower = position.lower()
+    # Проверяем точное совпадение или вхождение ключевого слова
+    for key, weight in POSITION_HIERARCHY.items():
+        if key in pos_lower:
+            return weight
+    return 999 # Если должность не найдена в списке, она будет в конце
+
 # --- DB Setup ---
 DATABASE_URL = f"sqlite:///{DB_PATH}"
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
@@ -167,11 +190,21 @@ def get_departments(db: Session = Depends(get_db)):
 @app.get("/api/employees", response_model=List[EmployeeOut])
 def get_employees(department: Optional[str] = Query(None), search: Optional[str] = Query(None), db: Session = Depends(get_db)):
     all_employees = db.query(EmployeeDB).all()
+
+    # Фильтрация
     if search:
-        s = search.lower()
-        all_employees = [e for e in all_employees if s in e.full_name.lower() or s in e.position.lower() or s in e.department.lower()]
-    if department: all_employees = [e for e in all_employees if e.department == department]
-    all_employees.sort(key=lambda e: e.full_name.lower())
+        s_lower = search.lower()
+        all_employees = [e for e in all_employees if s_lower in e.full_name.lower() or s_lower in e.position.lower() or s_lower in e.department.lower()]
+
+    if department:
+        all_employees = [e for e in all_employees if e.department == department]
+
+        # 🆕 Сортировка по старшинству, если выбран отдел
+        all_employees.sort(key=lambda e: (get_position_weight(e.position), e.full_name.lower()))
+    else:
+        # Стандартная сортировка по алфавиту, если отдел не выбран
+        all_employees.sort(key=lambda e: e.full_name.lower())
+
     return [_emp_out(e, db) for e in all_employees]
 
 @app.get("/api/employees/{emp_id}", response_model=EmployeeOut)
