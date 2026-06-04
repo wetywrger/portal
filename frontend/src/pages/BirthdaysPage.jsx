@@ -22,7 +22,9 @@ export default function BirthdaysPage() {
 
   const getBadge = (days) => {
     if (days === 0) return { text: '🎉 Сегодня!', bg: 'bg-green-100 text-green-700' };
-    if (days > 0 && days <= 5) return { text: `Через ${days} дн.`, bg: 'bg-brand-100 text-brand-700' };
+    if (days === 1) return { text: 'Завтра', bg: 'bg-brand-100 text-brand-700' }; // 🆕 Изменено
+    if (days > 1 && days <= 5) return { text: `Через ${days} дн.`, bg: 'bg-brand-100 text-brand-700' };
+    if (days === -1) return { text: 'Было вчера', bg: 'bg-slate-100 text-slate-600' }; // 🆕 Изменено
     return { text: `Было ${Math.abs(days)} дн. назад`, bg: 'bg-slate-100 text-slate-600' };
   };
 

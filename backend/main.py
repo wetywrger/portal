@@ -233,7 +233,7 @@ def get_birthdays(db: Session = Depends(get_db)):
                 out.days_until_birthday = days_diff
                 result.append(out)
         except: continue
-    result.sort(key=lambda x: x.days_until_birthday if x.days_until_birthday >= 0 else x.days_until_birthday + 366)
+    result.sort(key=lambda x: (x.days_until_birthday < 0, abs(x.days_until_birthday)))
     return result
 
 # --- Admin Endpoints ---
